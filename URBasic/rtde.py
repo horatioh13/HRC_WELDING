@@ -126,7 +126,7 @@ class RTDE(threading.Thread):  #, metaclass=Singleton
             self.__sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             self.__sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.__sock.settimeout(DEFAULT_TIMEOUT)
-            self.__sock.connect(('192.168.25.130', 30004))
+            self.__sock.connect(('169.254.56.120', 30004))
             # self.__sock.connect((self.__robotModel.ipAddress, 30004))
             self.__conn_state = ConnectionState.CONNECTED
         except (socket.timeout, socket.error):
@@ -242,48 +242,27 @@ class RTDE(threading.Thread):  #, metaclass=Singleton
         return True
 
     def __setupOutput(self, output_variables=None, types=[]):
-        '''
-        Configure an output package that the robot controller will send to the
-        external(this) application at the control frequency. Variables is a list of
-        variable names and should be a subset of the names supported as output by the
-        RTDE interface. The list of types is optional, but if any types are provided
-        it should have the same length as the output_variables list. The provided types will
-        be matched with the types that the RTDE interface expects and the function
-        returns False if they are not equal. Only one output package format can be
-        specified and hence no recipe id is used for output.
-        If output_variables is empty, xml configuration file is used.
-
-        Input parameters:
-        output_variables (list<string> or str): [Optional] Variable names from the list of possible RTDE outputs
-        types (list<string> or str): [Optional] Types matching the output_variables
-
-        Return value:
-        success (boolean)
-        '''
-
         if output_variables is None:
             if not os.path.isfile(self.__conf_filename):
-                self._logger.error("Configuration file don't exist : " + self.__conf_filename)
+                self._logger.error("Configuration file doesn't exist: " + self.__conf_filename)
                 return False
             tree = ET.parse(self.__conf_filename)
             root = tree.getroot()
-
-            #Setup data to be recived
             recive = root.find('receive')
+            if recive is None:
+                self._logger.error("No 'receive' element found in the configuration file.")
+                return False
             output_variables = ['timestamp']
             for child in recive:
                 output_variables.append(child.attrib['name'])
-
-
         cmd = Command.RTDE_CONTROL_PACKAGE_SETUP_OUTPUTS
         if type(output_variables) is list:
             payload = ','.join(output_variables)
         elif type(output_variables) is str:
             payload = output_variables
         else:
-            self._logger.error('Variables must be list of stings or a single string, output_variables is: ' + str(type(output_variables)))
+            self._logger.error('Variables must be a list of strings or a single string, output_variables is: ' + str(type(output_variables)))
             return None
-
         self.__rtde_output_names = output_variables
         payload = payload.encode('utf-8')
         self.__send(cmd, payload)

@@ -8,7 +8,7 @@ REALTIME_PORT = 30003
 
 # URScript command being sent to the robot
 #urscript_command = "set_digital_out(1, True)"
-urscript_command = "movej(p[0.1, -0.3, 0.2, 0.0, 0, 0], a=1.0, v=0.1)" # Move to a specific joint position
+urscript_command = "movej([0.174, -0.733, 0.187, 1.202, -1.247, 0.564], a=1.0, v=0.05)" # Move to a specific joint position
 #urscript_command = "textmsg(get_actual_tcp_pose())" # Get the current TCP position
 
 # Creates new line
