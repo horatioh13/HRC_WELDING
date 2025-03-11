@@ -26,6 +26,10 @@ __author__ = "Martin Huus Bjerge"
 __copyright__ = "Copyright 2017, Rope Robotics ApS, Denmark"
 __license__ = "MIT License"
 
+
+DEFAULT_TIMEOUT = 2.0
+
+
 class ConnectionState:
     ERROR = 0
     DISCONNECTED = 1

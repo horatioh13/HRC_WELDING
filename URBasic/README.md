@@ -1,2 +1,0 @@
-# URBasic
-UR communication RTDE

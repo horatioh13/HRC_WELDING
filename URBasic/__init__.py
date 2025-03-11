@@ -27,16 +27,12 @@ __author__ = "Martin Huus Bjerge"
 __copyright__ = "Copyright 2017, Rope Robotics ApS, Denmark"
 __license__ = "MIT License"
 
-import logging
-from URBasic.connectionState import ConnectionState
-from URBasic.dashboard import DashBoard
-from URBasic.dataLog import DataLog
-from URBasic.dataLogging import DataLogging
-#from URBasic.kinematic import *
-from URBasic.manipulation import *
-from URBasic.realTimeClient import RealTimeClient
-from URBasic.robotConnector import RobotConnector
-from URBasic.robotModel import RobotModel
-from URBasic.rtde import RTDE
-from URBasic.urScript import UrScript
-from URBasic.urScriptExt import UrScriptExt
+
+from .state import ConnectionState
+from .dashboard import DashBoard
+from .client import RealTimeClient
+from .connector import RobotConnector
+from .model import RobotModel
+from .rtde import RTDE
+from .script import UrScript
+from .scriptExt import UrScriptExt

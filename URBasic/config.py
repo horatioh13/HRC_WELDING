@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+rtde_config = """<?xml version="1.0"?>
 <!--  ###########################     NOTE: VERY IMPORTANT     ##############################   -->
 <!-- Universal Robots do not support more than 96 values in recieve or send config at one time  -->
 <rtde_config>
@@ -172,4 +172,4 @@
 		<!--<field name="input_double_register_22" type="DOUBLE" initValue="0"/>-->
 		<!--<field name="input_double_register_23" type="DOUBLE" initValue="0"/>-->
 	</send>
-</rtde_config>
+</rtde_config>"""

@@ -21,14 +21,17 @@ Except as contained in this notice, the name of "Rope Robotics ApS" shall not be
 in advertising or otherwise to promote the sale, use or other dealings in this Software
 without prior written authorization from "Rope Robotics ApS".
 '''
-import ctypes
+
 __author__ = "Martin Huus Bjerge"
 __copyright__ = "Copyright 2017, Rope Robotics ApS, Denmark"
 __license__ = "MIT License"
 
-import URBasic
-import numpy as np
+import ctypes
 import time
+import numpy as np
+from .connector import RobotConnector
+from .state import DEFAULT_TIMEOUT
+
 
 class UrScript(object):
     '''
@@ -50,25 +53,22 @@ class UrScript(object):
 
 
     Example:
-    rob = URBasic.urScript.UrScript('192.168.56.101', rtde_conf_filename='rtde_configuration.xml')
+    rob = URBasic.script.UrScript('192.168.56.101', rtde_conf_filename='rtde_configuration.xml')
     self.close_rtc()
     '''
-
 
     def __init__(self, host, robotModel, hasForceTorque=False, conf_filename=None):
         '''
         Constructor see class description for more info.
         '''
-        logger = URBasic.dataLogging.DataLogging()
-        name = logger.AddEventLogging(__name__)
-        self.__logger = logger.__dict__[name]
-        self.robotConnector = URBasic.robotConnector.RobotConnector(robotModel, host, hasForceTorque, conf_filename=conf_filename)
-        #time.sleep(200)
-        while(self.robotConnector.RobotModel.ActualTCPPose() is None):      ## check paa om vi er startet
-            print("waiting for everything to be ready")
-            time.sleep(1)
-        self.__logger.info('Init done')
-#############   Module motion   ###############
+        self.robotConnector = RobotConnector(robotModel, host, hasForceTorque, conf_filename=conf_filename)
+
+        t0 = time.time()
+        while (time.time()-t0 < DEFAULT_TIMEOUT) and self.robotConnector.RobotModel.ActualTCPPose() is None:
+            pass
+
+        if self.robotConnector.RobotModel.ActualTCPPose() is None:
+            raise ConnectionError()
 
     def waitRobotIdleOrStopFlag(self):
 
@@ -78,9 +78,8 @@ class UrScript(object):
         if self.robotConnector.RobotModel.rtcProgramExecutionError:
 
             print('Robot program execution error!!!')
-            #raise RuntimeError('Robot program execution error!!!')
 
-    def movej(self, q=None, a=1.4, v=1.05, t=0, r=0, wait=True, pose=None):
+    def movej(self, q=None, a=1.4, v =1.05, t =0, r =0, wait=True, pose=None):
         '''
         Move to position (linear in joint-space) When using this command, the
         robot must be at standstill or come from a movej og movel with a
@@ -101,7 +100,7 @@ class UrScript(object):
         wait: function return when movement is finished
         pose: target pose
         '''
-        prg = '''def move_j():
+        prg =  '''def move_j():
 {movestr}
 end
 '''
@@ -113,7 +112,7 @@ end
         if(wait):
             self.waitRobotIdleOrStopFlag()
 
-    def movel(self, pose=None, a=1.2, v=0.25, t=0, r=0, wait=True, q=None):
+    def movel(self, pose=None, a=1.2, v =0.25, t =0, r =0, wait=True, q=None):
         '''
         Move to position (linear in tool-space)
         See movej.
@@ -127,7 +126,7 @@ end
         q:    joint position
         '''
 
-        prg ='''def move_l():
+        prg =  '''def move_l():
 {movestr}
 end
 '''
@@ -136,13 +135,12 @@ end
         programString = prg.format(**locals())
 
         self.robotConnector.RealTimeClient.SendProgram(programString)
-        #time.sleep(0.5)
         if(wait):
             self.waitRobotIdleOrStopFlag()
 
 
 
-    def movep(self, pose=None, a=1.2, v=0.25, r=0, wait=True, q=None):
+    def movep(self, pose=None, a=1.2, v =0.25, r =0, wait=True, q=None):
         '''
         Move Process
 
@@ -158,7 +156,7 @@ end
         q:    list of target joint positions
         '''
 
-        prg = '''def move_p():
+        prg =  '''def move_p():
 {movestr}
 end
 '''
@@ -170,7 +168,7 @@ end
             self.waitRobotIdleOrStopFlag()
 
 
-    def movec(self, pose_via=None, pose_to=None, a=1.2, v=0.25, r=0, wait=True, q_via=None, q_to=None):
+    def movec(self, pose_via=None, pose_to=None, a=1.2, v =0.25, r =0, wait=True, q_via=None, q_to=None):
         '''
         Move Circular: Move to position (circular in tool-space)
 
@@ -190,11 +188,11 @@ end
         q_to:     list of target joint positions
         '''
 
-        prg = '''def move_p():
+        prg =  '''def move_p():
 {movestr}
 end
 '''
-        movestr = self._move(movetype='p', pose=pose_to, a=a, v=v, t=0, r=r, wait=wait, q=q_to, pose_via=pose_via, q_via=q_via)
+        movestr = self._move(movetype='p', pose=pose_to, a=a, v=v, t=0, r=r, wait=wait, q=q_to,pose_via=pose_via, q_via=q_via)
 
         programString = prg.format(**locals())
 
@@ -254,11 +252,11 @@ end
                     pose_via_x = pose_via_x.tolist()
                     pose_via_val='{prefix_via}{pose_via_x},'
 
-                if (np.size(pose, 0) -1)==idx:
+                if (np.size(pose, 0)-1)==idx:
                     r=0
-                movestr +='    move{movetype}({pose_via_val} {prefix}{posex}, a={a}, v={v}, {t_val} r={r})\n'.format(**locals())
+                movestr +=  '    move{movetype}({pose_via_val} {prefix}{posex}, a={a}, v={v}, {t_val} r={r})\n'.format(**locals())
 
-            movestr +='    stopl({a})\n'.format(**locals())
+            movestr +=  '    stopl({a})\n'.format(**locals())
         else:
             posex = np.round(pose, 4)
             posex = posex.tolist()
@@ -266,13 +264,13 @@ end
                 pose_via_x = np.round(pose_via, 4)
                 pose_via_x = pose_via_x.tolist()
                 pose_via_val='{prefix_via}{pose_via_x},'
-            movestr +='    move{movetype}({pose_via_val} {prefix}{posex}, a={a}, v={v}, {t_val} r={r})\n'.format(**locals())
+            movestr +=  '    move{movetype}({pose_via_val} {prefix}{posex}, a={a}, v={v}, {t_val} r={r})\n'.format(**locals())
 
 
 
         return movestr
 
-    def force_mode(self, task_frame=[0., 0., 0., 0., 0., 0.], selection_vector=[0, 0, 1, 0, 0, 0], wrench=[0., 0., 0., 0., 0., 0.], f_type=2, limits=[2, 2, 1.5, 1, 1, 1], wait=False, timeout=60):
+    def force_mode(self, task_frame=[0.,0.,0., 0.,0.,0.], selection_vector=[0,0,1,0,0,0], wrench=[0.,0.,0., 0.,0.,0.], f_type=2, limits=[2, 2, 1.5, 1, 1, 1], wait=False, timeout=60):
         '''
         Set robot to be controlled in force mode
 
@@ -334,7 +332,7 @@ end
             self.waitRobotIdleOrStopFlag()
         time.sleep(0.05)
 
-    def servoc(self, pose, a=1.2, v=0.25, r=0, wait=True):
+    def servoc(self, pose, a=1.2, v =0.25, r =0, wait=True):
         '''
         Servo Circular
         Servo to position (circular in tool-space). Accelerates to and moves with constant tool speed v.
@@ -353,7 +351,7 @@ end
         if(wait):
             self.waitRobotIdleOrStopFlag()
 
-    def servoj(self, q, t=0.008, lookahead_time=0.1, gain=100, wait=True):
+    def servoj(self, q, t =0.008, lookahead_time=0.1, gain=100, wait=True):
         '''
         Servo to position (linear in joint-space)
         Servo function used for online control of the robot. The lookahead time
@@ -375,7 +373,7 @@ end
         if(wait):
             self.waitRobotIdleOrStopFlag()
 
-    def speedj(self, qd, a, t, wait=True):
+    def speedj(self, qd, a, t , wait=True):
         '''
         Joint speed
         Accelerate linearly in joint space and continue with constant joint
@@ -595,7 +593,7 @@ end
         self.waitRobotIdleOrStopFlag()
         return self.robotConnector.RobotModel.outputDoubleRegister[0]
 
-    def stop_conveyor_tracking(self, a=15, aRot='a', wait=True):
+    def stop_conveyor_tracking(self, a=15, aRot ='a', wait=True):
         '''
         Stop tracking the conveyor, started by track conveyor linear() or
         track conveyor circular(), and decellerate tool speed to zero.
@@ -661,7 +659,7 @@ end
         if(wait):
             self.waitRobotIdleOrStopFlag()
 
-    def position_deviation_warning(self, enabled, threshold=0.8, wait=True):
+    def position_deviation_warning(self, enabled, threshold =0.8, wait=True):
         '''
         Write a message to the log when the robot position deviates from the target position.
         Parameters:
@@ -800,7 +798,7 @@ end
         return pose
 
 
-    def get_actual_tcp_speed(self, wait=True):
+    def get_actual_tcp_speed(self,wait=True):
         '''
         Returns the current measured TCP speed
 
@@ -843,7 +841,7 @@ end
         '''
         raise NotImplementedError('Function Not yet implemented')
 
-    def get_inverse_kin(self, x, qnear=None, maxPositionError=0.0001, maxOrientationError=0.0001):
+    def get_inverse_kin(self, x, qnear=None, maxPositionError =0.0001, maxOrientationError =0.0001):
         '''
         Inverse kinematic transformation (tool space -> joint space).
         Solution closest to current joint positions is returned, unless qnear defines one.
@@ -900,7 +898,7 @@ end
             self.robotConnector.RobotModel.OutputDoubleRegister(5),
         ]
 
-    def get_joint_temp(self, j):
+    def get_joint_temp(self,j):
         '''
         Returns the temperature of joint j
 
@@ -1064,7 +1062,7 @@ end
         '''
         raise NotImplementedError('Function Not yet implemented')
 
-    def popup(self, s, title='Popup', warning=False, error=False):
+    def popup(self, s, title='Popup', warning=False, error =False):
         '''
         Display popup on GUI
 
@@ -1261,17 +1259,9 @@ end
         Return Value
         Sum of position parts and product of rotation parts (pose)
         '''
-        Trans_1 = URBasic.kinematic.Pose2Tran_Mat(p_1)
-        Trans_2 = URBasic.kinematic.Pose2Tran_Mat(p_2)
-        Trans_3 = np.matmul(Trans_1, Trans_2)
-        p_3 = URBasic.kinematic.Tran_Mat2Pose(Trans_3)
-        return p_3
+        raise NotImplementedError('Function Not yet implemented')
 
-
-
-
-
-############    Module interfaces  #################
+    ############    Module interfaces  #################
 
     def get_configurable_digital_in(self, n):
         '''

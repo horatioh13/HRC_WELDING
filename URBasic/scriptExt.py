@@ -25,12 +25,12 @@ __author__ = "Martin Huus Bjerge"
 __copyright__ = "Copyright 2017, Rope Robotics ApS, Denmark"
 __license__ = "MIT License"
 
-import URBasic
 import numpy as np
-#import time
+import time
+from .script import UrScript
 
 
-class UrScriptExt(URBasic.urScript.UrScript):
+class UrScriptExt(UrScript):
     '''
     Interface to remote access UR script commands, and add some extended features as well.
     For more details see the script manual at this site:
@@ -53,24 +53,14 @@ class UrScriptExt(URBasic.urScript.UrScript):
 
 
     Example:
-    rob = URBasic.urScriptExt.UrScriptExt('192.168.56.101', rtde_conf_filename='rtde_configuration.xml')
+    rob = URBasic.scriptExt.UrScriptExt('192.168.56.101', rtde_conf_filename='rtde_configuration.xml')
     self.close_rtc()
     '''
 
     def __init__(self, host, robotModel, hasForceTorque=False, conf_filename=None):
-        if host is None:  # Only for enable code completion
-            return
-        super(UrScriptExt, self).__init__(host, robotModel, hasForceTorque, conf_filename)
-        logger = URBasic.dataLogging.DataLogging()
-        name = logger.AddEventLogging(__name__, log2Consol=False)
-        self.__logger = logger.__dict__[name]
-        self.print_actual_tcp_pose()
-        self.print_actual_joint_positions()
-        self.__logger.info('Init done')
+        super().__init__(host, robotModel, hasForceTorque, conf_filename)
 
     def close(self):
-        self.print_actual_tcp_pose()
-        self.print_actual_joint_positions()
         self.robotConnector.close()
 
     def reset_error(self):
@@ -84,28 +74,22 @@ class UrScriptExt(URBasic.urScript.UrScript):
         '''
 
         if not self.robotConnector.RobotModel.RobotStatus().PowerOn:
-            # self.robotConnector.DashboardClient.PowerOn()
             self.robotConnector.DashboardClient.ur_power_on()
             self.robotConnector.DashboardClient.wait_dbs()
-            # self.robotConnector.DashboardClient.BrakeRelease()
             self.robotConnector.DashboardClient.ur_brake_release()
             self.robotConnector.DashboardClient.wait_dbs()
 
-        if self.robotConnector.RobotModel.SafetyStatus().StoppedDueToSafety:  # self.get_safety_status()['StoppedDueToSafety']:
-            # self.robotConnector.DashboardClient.UnlockProtectiveStop()
+        if self.robotConnector.RobotModel.SafetyStatus().StoppedDueToSafety:
             self.robotConnector.DashboardClient.ur_unlock_protective_stop()
             self.robotConnector.DashboardClient.wait_dbs()
-            # self.robotConnector.DashboardClient.CloseSafetyPopup()
             self.robotConnector.DashboardClient.ur_close_safety_popup()
             self.robotConnector.DashboardClient.wait_dbs()
-            # self.robotConnector.DashboardClient.BrakeRelease()
             self.robotConnector.DashboardClient.ur_brake_release()
             self.robotConnector.DashboardClient.wait_dbs()
 
             # ADDED: If there was a safety stop -> reupload the realtime control program
             self.init_realtime_control()
 
-        # return self.get_robot_status()['PowerOn'] & (not self.get_safety_status()['StoppedDueToSafety'])
         return self.robotConnector.RobotModel.RobotStatus().PowerOn and not self.robotConnector.RobotModel.SafetyStatus().StoppedDueToSafety
 
     def get_in(self, port, wait=True):
@@ -147,8 +131,6 @@ class UrScriptExt(URBasic.urScript.UrScript):
         elif 'TDO' == port[:3]:
             pass
 
-            # if self.sendData():
-            #    return True
             return True  # Vi har sendt det .. vi checker ikke
         else:
             return False
@@ -172,7 +154,6 @@ class UrScriptExt(URBasic.urScript.UrScript):
         '''
 
         if not self.robotConnector.RTDE.isRunning():
-            self.__logger.error('RTDE need to be running to use force remote')
             return False
 
         selection_vector = [0, 0, 0, 0, 0, 0]
@@ -328,11 +309,6 @@ end
             return True
 
         else:
-            if not self.robotConnector.RobotModel.forceRemoteActiveFlag:
-                self.__logger.warning('Force Remote not initialized')
-            else:
-                self.__logger.warning('RTDE is not running')
-
             return False
 
     def init_realtime_control(self):
@@ -341,16 +317,15 @@ end
         initialized by this function. This way no new program has to be sent to the robot
         and the robot can perform a smooth trajectory.
         Sending new servoj commands is done by utilizing RTDE of this library
-
+        
         Parameters:
         sample_time: time of one sample, standard is 8ms as this is the thread-cycle time of UR
-
+        
         Return Value:
         Status (bool): Status, True if successfully initialized.
         '''
 
         if not self.robotConnector.RTDE.isRunning():
-            self.__logger.error('RTDE needs to be running to use realtime control')
             return False
 
         # get current tcp pos
@@ -366,19 +341,19 @@ end
         self.robotConnector.RTDE.sendData()
 
         prog = '''def realtime_control():
-
-
+    
+    
     while (True):
-
+        
         new_pose = p[read_input_float_register(0),
                     read_input_float_register(1),
                     read_input_float_register(2),
                     read_input_float_register(3),
                     read_input_float_register(4),
                     read_input_float_register(5)]
-
-        servoj(get_inverse_kin(new_pose), t=0.2, lookahead_time= 0.1, gain=350)
-
+           
+        servoj(get_inverse_kin(new_pose), t=.4, gain=150)
+            
         sync()
     end
 end
@@ -412,11 +387,6 @@ end
             self.robotConnector.RTDE.sendData()
             return True
         else:
-            if not self.robotConnector.RobotModel.realtimeControlFlag:
-                self.__logger.warning('Realtime Remote Control not initialized')
-            else:
-                self.__logger.warning('RTDE is not running')
-
             return False
 
     def move_force_2stop(self, start_tolerance=0.01,

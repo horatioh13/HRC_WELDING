@@ -25,45 +25,36 @@ __author__ = "Martin Huus Bjerge"
 __copyright__ = "Copyright 2017, Rope Robotics ApS, Denmark"
 __license__ = "MIT License"
 
-import URBasic
-#import URplus #import if any UPplus modules is needed
+from .client import RealTimeClient
+from .dashboard import DashBoard
+from .rtde import RTDE
+
 
 class RobotConnector(object):
     '''
-    Class to hold all connection to the Universal Robot and plus devices
+    Class to hold all connection to the Universal Robot and plus devises
 
     Input parameters:
 
     '''
-
-
     def __init__(self, robotModel, host, hasForceTorque=False, conf_filename=None):
         '''
         Constructor see class description for more info.
         '''
-        if(False):
-            assert isinstance(robotModel, URBasic.robotModel.RobotModel)  ### This line is to get code completion for RobotModel
         self.RobotModel = robotModel
         self.RobotModel.ipAddress = host
         self.RobotModel.hasForceTorqueSensor = hasForceTorque
-        self.RealTimeClient = URBasic.realTimeClient.RealTimeClient(robotModel)
-        self.DataLog = URBasic.dataLog.DataLog(robotModel)
-        self.RTDE = URBasic.rtde.RTDE(robotModel, conf_filename=conf_filename)
-        self.DashboardClient = URBasic.dashboard.DashBoard(robotModel)
-        self.ForceTourqe = None
-        # if hasForceTorque:
-        #     self.ForceTourqe = URplus.forceTorqueSensor.ForceTorqueSensor(robotModel)
+        self.RealTimeClient = RealTimeClient(robotModel)
 
-        logger = URBasic.dataLogging.DataLogging()
-        name = logger.AddEventLogging(__name__)
-        self.__logger = logger.__dict__[name]
-        self.__logger.info('Init done')
+        if not self.RealTimeClient.IsRtcConnected():
+            raise ConnectionError('Could not connect to the robot')
+        
+        self.RTDE = RTDE(robotModel, conf_filename=conf_filename)
+        self.DashboardClient = DashBoard(robotModel)
+        self.ForceTourqe = None
 
 
     def close(self):
-        self.DataLog.close()
         self.RTDE.close()
         self.RealTimeClient.Disconnect()
         self.DashboardClient.close()
-        if self.ForceTourqe is not None:
-            self.ForceTourqe.close()
