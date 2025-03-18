@@ -1,28 +1,22 @@
 import URBasic
 import time
 import keyboard
+import tkinter as tk
 
 host = '169.254.56.120'   # E.g. a Universal Robot offline simulator, please adjust to match your IP
 acc = 1.2
 vel = 0.1
 
-def update_pose():
+def move_robot(value):
     global target_tcp_pose
-    step = 0.001  # Define the step size for each key press
-    if keyboard.is_pressed('w'):
-        target_tcp_pose[0] += step
-    if keyboard.is_pressed('s'):
-            target_tcp_pose[0] -= step
-    if keyboard.is_pressed('a'):
-        target_tcp_pose[1] -= step
-    if keyboard.is_pressed('d'):
-        target_tcp_pose[1] += step
-    if keyboard.is_pressed('q'):
-        target_tcp_pose[2] += step
-    if keyboard.is_pressed('e'):
-        target_tcp_pose[2] -= step
-    time.sleep(0.00001)  # Add a small delay to prevent high CPU usage
+    target_tcp_pose[0] = float(value)
+    robot.set_realtime_pose(pose=target_tcp_pose)
 
+def increase_slider(event):
+    position_slider.set(position_slider.get() + 0.001)
+
+def decrease_slider(event):
+    position_slider.set(position_slider.get() - 0.001)
 
 if __name__ == '__main__':
     robot_model = URBasic.model.RobotModel()
@@ -42,11 +36,25 @@ if __name__ == '__main__':
 
     try:
         print("starting loop")
-        while True:
-            update_pose()
-            robot.set_realtime_pose(pose=target_tcp_pose)
-            time.sleep(0.00001)  # Add a small delay to prevent high CPU usage
+        
+        # Create Tkinter window
+        root = tk.Tk()
+        root.title("Robot Control")
 
+        # Create and place slider
+        global position_slider
+        position_slider = tk.Scale(root, from_=-.1, to=.1, resolution=0.001, orient=tk.HORIZONTAL, label="Position", length=600, command=move_robot)
+        position_slider.set(target_tcp_pose[0])
+        position_slider.pack(pady=20)
+
+        # Bind arrow keys to slider control functions
+        root.bind('<Up>', increase_slider)
+        root.bind('<Down>', decrease_slider)
+
+        # Start Tkinter event loop
+        root.mainloop()
+
+        robot.close()
 
     except KeyboardInterrupt:
         print("closing robot connection")
